@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Générateur de liens de copie</title>
+  <style>
+    :root { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; padding: 1.25rem; line-height: 1.5; }
+    main { max-width: 52rem; margin: 0 auto; }
+    label { display: block; font-weight: 650; margin: 1rem 0 .35rem; }
+    input, textarea {
+      box-sizing: border-box; width: 100%; padding: .8rem;
+      border: 1px solid #8888; border-radius: .65rem; font: inherit;
+      background: transparent; color: inherit;
+    }
+    textarea { min-height: 9rem; resize: vertical; }
+    #link { min-height: 6rem; }
+    button {
+      border: 0; border-radius: .7rem; padding: .8rem 1.1rem;
+      font: inherit; font-weight: 650; cursor: pointer;
+      color: white; background: #1769e0; margin-top: .7rem;
+    }
+    .secondary { color: inherit; background: #7775; }
+    .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    .hint { opacity: .75; font-size: .9rem; }
+    #status { min-height: 1.5em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Générateur de liens de copie</h1>
+    <p>Saisissez le texte à copier et le libellé du bouton. Le lien se met à jour automatiquement.</p>
+
+    <label for="base">Adresse de la page de copie</label>
+    <input id="base" type="url" value="https://glowtoolshub.github.io/copy/" autocomplete="url">
+    <p class="hint">Remplacez cette adresse par l’URL de votre page index.html publiée sur GitHub Pages.</p>
+
+    <label for="sourceText">Texte à afficher et à copier</label>
+    <textarea id="sourceText" placeholder="Saisissez ou collez votre texte ici…"></textarea>
+
+    <label for="buttonLabel">Nom du bouton (facultatif)</label>
+    <input id="buttonLabel" type="text" placeholder="Copier" value="Copier">
+
+    <label for="link">Lien généré</label>
+    <textarea id="link" readonly aria-label="Lien généré"></textarea>
+    <div class="row">
+      <button id="copyLink" type="button">Copier le lien</button>
+      <button id="openLink" class="secondary" type="button">Ouvrir le lien</button>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <p class="hint">Le texte est encodé dans l’URL et n’est pas envoyé à ce générateur. Évitez toutefois les données confidentielles : le lien peut conserver le texte dans l’historique du navigateur lorsqu’il est ouvert.</p>
+  </main>
+
+  <script>
+    (() => {
+      const baseInput = document.getElementById("base");
+      const textInput = document.getElementById("sourceText");
+      const labelInput = document.getElementById("buttonLabel");
+      const linkOutput = document.getElementById("link");
+      const status = document.getElementById("status");
+
+      function makeLink() {
+        const rawBase = baseInput.value.trim();
+        if (!rawBase) {
+          linkOutput.value = "";
+          return;
+        }
+
+        try {
+          const url = new URL(rawBase);
+          url.search = "";
+          url.hash = "";
+          url.searchParams.set("text", textInput.value);
+          const label = labelInput.value.trim() || "Copier";
+          // "Copier" est la valeur par défaut de la page cible : inutile de l'ajouter.
+          if (label !== "Copier") url.searchParams.set("button", label);
+          linkOutput.value = url.toString();
+          status.textContent = "";
+        } catch (_) {
+          linkOutput.value = "";
+          status.textContent = "Veuillez saisir une adresse URL valide, par exemple https://glowtoolshub.github.io/copy/";
+        }
+      }
+
+      async function copyLink() {
+        if (!linkOutput.value) {
+          status.textContent = "Aucun lien valide à copier.";
+          return;
+        }
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(linkOutput.value);
+          } else {
+            linkOutput.focus();
+            linkOutput.select();
+            const ok = document.execCommand("copy");
+            if (!ok) throw new Error("Échec de copie");
+          }
+          status.textContent = "Lien copié dans le presse-papiers.";
+        } catch (_) {
+          linkOutput.focus();
+          linkOutput.select();
+          status.textContent = "Copie automatique impossible : le lien est sélectionné, choisissez Copier.";
+        }
+      }
+
+      baseInput.addEventListener("input", makeLink);
+      textInput.addEventListener("input", makeLink);
+      labelInput.addEventListener("input", makeLink);
+      document.getElementById("copyLink").addEventListener("click", copyLink);
+      document.getElementById("openLink").addEventListener("click", () => {
+        if (linkOutput.value) window.open(linkOutput.value, "_blank", "noopener,noreferrer");
+        else status.textContent = "Aucun lien valide à ouvrir.";
+      });
+
+      makeLink();
+    })();
+  </script>
+</body>
+</html>
